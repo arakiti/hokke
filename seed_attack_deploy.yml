@@ -1,0 +1,108 @@
+heat_template_version: 2017-02-24
+
+description: seed system deploy attack env
+
+parameters:
+# ----- Keystone value -----
+  TenantID1:
+    type: string
+    description: Attack_Project
+    default: "Attack_Project"
+  TenantID2:
+    type: string
+    description: Defense_Project
+    default: "Defense_Project"
+
+# ----- Net value -----
+  ATK_NetID:
+    type: string
+    description: Attack net name
+    default: "Attack_Net"
+  SRD_NetID:
+    type: string
+    description: Connection Between NW Attack and Defense
+    default: "Shared_net"
+
+# ----- Subnet value -----
+  ATK_SubnetID:
+    type: string
+    description: Attack subnet name
+    default: "Attack_Subnet"
+  SRD_SubnetID:
+    type: string
+    description: Shared subnet name
+    default: "Shared_Subnet"
+
+# ----- Instance image value -----
+  ATK_image_vyos:
+    type: string
+    description: Attack VyOS
+    default: "vyos"
+  ATK_image_mail:
+    type: string
+    description: Attack Mail
+    default: "mail2"
+  ATK_image_kali:
+    type: string
+    description: Attack KALI
+    default: "kalilinux"
+  ATK_image_crawler:
+    type: string
+    description: Attack Web Crawler
+    default: "hogehoge"
+
+# ----- Securty group value ------
+  Seed_Security_Group:
+    type: string
+    description: Security Group name
+    default: "Seed_Sec_Group"
+
+resources:
+# ----- Neutron Net -----
+  the_attack_net:
+    type: OS::Neutron::Net
+    properties:
+      name: { get_param: ATK_NetID }
+      shared: false
+      tenant_id: { get_param: TenantID1 }
+
+# ----- Neutron Subnet -----
+  attack_net_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network: { get_resource: the_attack_net }
+      cidr: 10.0.0.0/8
+      name: { get_param: ATK_SubnetID }
+
+# ----- Neutron Port -----
+  attack_vyos_int_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_attack_net }
+#      security_groups: [ { get_param: Seed_Security_Group } ]
+      fixed_ips: [{"subnet_id": { get_resource: attack_net_subnet }, "ip_address": 10.0.0.200}]
+      allowed_address_pairs: [{"ip_address": 0.0.0.0/0 }]
+  attack_vyos_ex_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_param: SRD_NetID }
+#      security_groups: [ { get_param: Seed_Security_Group } ]
+      fixed_ips: [{"subnet_id": { get_param: SRD_SubnetID }, "ip_address": 200.10.10.10}]
+      allowed_address_pairs: [{"ip_address": 0.0.0.0/0 }]
+
+# ----- Nova Compute -----
+# ----- Attack Area -----
+  attack_vyos:
+    type: OS::Nova::Server
+    properties:
+      name: "Attack_VyOS"
+      image: { get_param: ATK_image_vyos }
+      flavor: "m1.tiny"
+      networks: [{"subnet": { get_param: ATK_SubnetID}, "network": { get_param: ATK_NetID}, "port": { get_resource: attack_vyos_int_port}}, {"subnet": { get_param: SRD_SubnetID }, "network": { get_param: SRD_NetID}, "port": { get_resource: attack_vyos_ex_port}}]
+  attack_kali1:
+    type: OS::Nova::Server
+    properties:
+      name: "Kali_Linux1"
+      image: { get_param: ATK_image_kali }
+      flavor: "m1.medium"
+      networks: [ {"subnet": { get_resource: attack_net_subnet }, "network": { get_resource: the_attack_net }} ]

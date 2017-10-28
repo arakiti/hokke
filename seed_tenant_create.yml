@@ -1,0 +1,71 @@
+heat_template_version: 2017-02-24
+
+description: keystone tenant creat
+
+parameters:
+# ----- keystone value -----
+  TenantID1:
+    type: string
+    description: Attack_Project
+    default: "Attack_Project"
+  TenantID2:
+    type: string
+    description: Defense_Project
+    default: "Defense_Project"
+  Tnant_UserID:
+    type: string
+    description: Tnant_User
+    default: "seed"
+  Tnant_admin_Role:
+    type: string
+    description: Tnant_User_Role
+    default: "admin"
+  Tnant_Heat_Role:
+    type: string
+    description: Tnant_Heat_Role
+    default: "heat_stack_owner"
+  User_Password:
+    type: string
+    description: Login Password
+    default: "seedadmin"
+  DomainID:
+    type: string
+    description: tenant create domain
+    default: "default"
+
+resources:
+# ----- Keystone Tenant -----
+  the_tenant0:
+    type: OS::Keystone::Project
+    properties:
+      description: Attack_tenant
+      domain: { get_param: DomainID }
+      enabled: true
+      name: { get_param: TenantID1 }
+#      parent: "admin"
+  the_tenant1:
+    type: OS::Keystone::Project
+    properties:
+      description: Defense_tenant
+      domain: { get_param: DomainID }
+      enabled: true
+      name: { get_param: TenantID2 }
+#      parent: "admin"
+
+# ----- Keystone User Tenant -----
+#  the_tenant_user1:
+#    type: OS::Keystone::UserRoleAssignment
+#    properties:
+#      description: hugahuga
+#      roles: [ { "role": { get_param: Tnant_admin_Role }, project": { get_resource: the_tenant0 } }, { "role": { get_param: Tnant_admin_Role }, "project": { get_resource: the_tenant1 } } ]
+#      user: { get_param: Tnant_UserID }
+# ----- Keystone User Create -----
+  tenant_user_create:
+    type: OS::Keystone::User
+    properties:
+      name: { get_param: Tnant_UserID }
+      default_project: "admin"
+      description: seed system admin user
+      domain: { get_param: DomainID }
+      roles: [ { "role": { get_param: Tnant_Heat_Role }, "project": { get_resource: the_tenant0 } }, { "role": { get_param: Tnant_Heat_Role }, "project": { get_resource: the_tenant1 } }, { "role": { get_param: Tnant_admin_Role }, "project": { get_resource: the_tenant0 } }, { "role": { get_param: Tnant_admin_Role }, "project": { get_resource: the_tenant1 } }]
+      password: { get_param: User_Password }
