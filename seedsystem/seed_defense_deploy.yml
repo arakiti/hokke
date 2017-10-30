@@ -1,0 +1,429 @@
+heat_template_version: 2017-02-24
+
+description: seed system deploy defense env
+
+parameters:
+# ----- keystone value -----
+  TenantID1:
+    type: string
+    description: Attack_Project
+    default: "Attack_Project"
+  TenantID2:
+    type: string
+    description: Defense_Project
+    default: "Defense_Project"
+# ----- Net value -----
+  ATK_NetID:
+    type: string
+    description: Attack net name
+    default: "Attack_Net"
+  DF_NetID:
+    type: string
+    description: Defense server net name
+    default: "Defense_Server_Net"
+  SPT_NetID:
+    type: string
+    description: Defense support net name
+    default: "Defense_support_net"
+  JOIN_NetID:
+    type: string
+    description: Connection Between NW Defense and Support
+    default: "Join_net"
+  SRD_NetID:
+    type: string
+    description: Connection Between NW Attack and Defense
+    default: "Shared_net"
+# ----- Subnet value -----
+  ATK_SubnetID:
+    type: string
+    description: Attack subnet name
+    default: "Attack_Subnet"
+  DF_SubnetID:
+    type: string
+    description: Defense server subnet name
+    default: "Defense_Server_Subnet"
+  SPT_SubnetID:
+    type: string
+    description: Defense support support subnet name
+    default: "Defense_Support_Subnet"
+  JOIN_SubnetID:
+    type: string
+    description: Join subnet name
+    default: "Join Subnet"
+  SRD_SubnetID:
+    type: string
+    description: Shared subnet name
+    default: "Shared_Subnet"
+# ----- Securty group value ------
+  Seed_Security_Group:
+    type: string
+    description: Security Group name
+    default: "Seed_Sec_Group"
+# ------ Instance image value -----
+
+  DF_image_vyos:
+    type: string
+    description: Defense VyOS
+    default: "vyos"
+  DF_image_web1:
+    type: string
+    description: Defense Web1
+    default: "web1"
+  DF_image_web2:
+    type: string
+    description: Defense Web2
+    default: "web2"
+  DF_image_db1:
+    type: string
+    description: Defense DB1
+    default: "db1"
+  DF_image_db2:
+    type: string
+    description: Defense DB2
+    default: "db2"
+  DF_image_dns:
+    type: string
+    description: Defense DNS
+    default: "dns"
+  DF_image_mail:
+    type: string
+    description: Defense Mail
+    default: "mail1"
+  DF_image_zabbix:
+    type: string
+    description: Defense Zabbix
+    default: "zabbix"
+  SPT_image_vyos:
+    type: string
+    description: Support VyOS
+    default: "vyos"
+  SPT_image_Ubuntu1:
+    type: string
+    description: Support Ubuntu1
+    default: "vnc"
+  SPT_image_Ubuntu2:
+    type: string
+    description: Support Ubuntu2
+    default: "vnc"
+  SPT_image_Ubuntu3:
+    type: string
+    description: Support Ubuntu3
+    default: "vnc"
+  SPT_image_Ubuntu4:
+    type: string
+    description: Support Ubuntu4
+    default: "vnc"
+
+
+resources:
+# ----- Neutron Net -----
+#  the_attack_net:
+#    type: OS::Neutron::Net
+#    properties:
+#      name: { get_param: ATK_NetID }
+#      shared: false
+#      tenant_id: { get_param: TenantID1 }
+  the_defense_net0:
+    type: OS::Neutron::Net
+    properties:
+      name: { get_param: DF_NetID }
+      shared: false
+      tenant_id: { get_param: TenantID2 }
+  the_defense_net1:
+    type: OS::Neutron::Net
+    properties:
+      name: { get_param: SPT_NetID }
+      shared: false
+      tenant_id: { get_param: TenantID2 }
+  the_join_net:
+    type: OS::Neutron::Net
+    properties:
+      name: { get_param: JOIN_NetID }
+      shared: false
+      tenant_id: { get_param: TenantID2 }
+  the_shared_net:
+    type: OS::Neutron::Net
+    properties:
+      name: { get_param: SRD_NetID }
+      shared: true
+      tenant_id: { get_param: TenantID2 }
+
+# ----- Neutron Subnet ------
+#  attack_net_subnet:
+#    type: OS::Neutron::Subnet
+#    properties:
+#      network: { get_resource: the_attack_net }
+#      cidr: 10.0.0.0/8
+#      name: { get_param: ATK_SubnetID }
+  defense_net0_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network: { get_resource: the_defense_net0 }
+      enable_dhcp: false
+      cidr: 192.168.100.0/24
+      name: { get_param: DF_SubnetID }
+  defense_net1_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network: { get_resource: the_defense_net1 }
+      enable_dhcp: false
+      cidr: 192.168.99.0/24
+      name: { get_param: SPT_SubnetID }
+  join_net_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network: { get_resource: the_join_net }
+      enable_dhcp: false
+      cidr: 192.168.200.0/24
+      name: { get_param: JOIN_SubnetID }
+  shared_net_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network: { get_resource: the_shared_net }
+      enable_dhcp: false
+      cidr: 200.10.10.0/24
+      name: { get_param: SRD_SubnetID }
+
+# ----- Securty Group -----
+  seed_security_group:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      description: Security Group Create
+      name: { get_param: Seed_Security_Group }
+      rules: [
+        {remote_ip_prefix: 0.0.0.0/0,
+        protocol: tcp,
+        port_range_min: 1,
+        port_range_max: 65535},
+        {remote_ip_prefix: 0.0.0.0/0,
+        protocol: udp,
+        port_range_min: 1,
+        port_range_max: 65535},
+        {remote_ip_prefix: 0.0.0.0/0,
+        protocol: icmp}
+      ]
+#      rules: [{"port_range_min": 1, "ethertype":"IPv4", "port_range_max": 65535, "protocol": "tcp", "direction": ingress, "remote_ip_prefix": 0.0.0.0/0 }, { "port_range_min": 0, "ethertype":"IPv4", "port_range_max": 65535, "protocol": "udp", "direction": ingress, "remote_ip_prefix": 0.0.0.0/0 }, { "port_range_min": 1, "ethertype":"IPv4", "port_range_max": 65535, "protocol": "icmp", "direction": ingress, "remote_ip_prefix": 0.0.0.0/0 }, {"port_range_min": 1, "ethertype":"IPv4", "port_range_max": 65535, "protocol": "tcp", "direction": egress, "remote_ip_prefix": 0.0.0.0/0 }, { "port_range_min": 1, "ethertype":"IPv4", "port_range_max": 65535, "protocol": "udp", "direction": egress, "remote_ip_prefix": 0.0.0.0/0 }, { "port_range_min": 1, "ethertype":"IPv4", "port_range_max": 65535, "protocol": "icmp", "direction": egress, "remote_ip_prefix": 0.0.0.0/0 } ]
+
+# ----- Neutron Port -----
+  defense_web1_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_defense_net0 }
+      security_groups: [ { get_resource: seed_security_group } ]
+      fixed_ips: [{"subnet_id":{get_resource: defense_net0_subnet}, "ip_address": 192.168.100.100}]
+  defense_web2_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_defense_net0 }
+      security_groups: [ { get_resource: seed_security_group } ]
+      fixed_ips: [{"subnet_id":{get_resource: defense_net0_subnet}, "ip_address": 192.168.100.101}]
+  defense_db1_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_defense_net0 }
+      security_groups: [ { get_resource: seed_security_group } ]
+      fixed_ips: [{"subnet_id":{get_resource: defense_net0_subnet}, "ip_address": 192.168.100.102}]
+  defense_db2_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_defense_net0 }
+      security_groups: [ { get_resource: seed_security_group } ]
+      fixed_ips: [{"subnet_id":{get_resource: defense_net0_subnet}, "ip_address": 192.168.100.103}]
+  defense_dns_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_defense_net0 }
+      security_groups: [ { get_resource: seed_security_group } ]
+      fixed_ips: [{"subnet_id":{get_resource: defense_net0_subnet}, "ip_address": 192.168.100.104}]
+  defense_mail_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_defense_net0 }
+      security_groups: [ { get_resource: seed_security_group } ]
+      fixed_ips: [{"subnet_id":{get_resource: defense_net0_subnet}, "ip_address": 192.168.100.105}]
+  defense_zabbix_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_defense_net0 }
+      security_groups: [ { get_resource: seed_security_group } ]
+      fixed_ips: [{"subnet_id":{get_resource: defense_net0_subnet}, "ip_address": 192.168.100.106}]
+  defense_vyos_int_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_defense_net0 }
+      security_groups: [ { get_resource: seed_security_group } ]
+      fixed_ips: [{"subnet_id":{get_resource: defense_net0_subnet}, "ip_address": 192.168.100.200}]
+      allowed_address_pairs: [{"ip_address": 0.0.0.0/0 }]
+  defense_vyos_ex_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_shared_net }
+      security_groups: [ { get_resource: seed_security_group } ]
+      fixed_ips: [{"subnet_id":{get_resource: shared_net_subnet }, "ip_address": 200.10.10.100}]
+      allowed_address_pairs: [{"ip_address": 0.0.0.0/0 }]
+  defense_vyos_join_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_join_net }
+      security_groups: [ { get_resource: seed_security_group } ]
+      fixed_ips: [{"subnet_id":{get_resource: join_net_subnet }, "ip_address": 192.168.200.100}]
+      allowed_address_pairs: [{"ip_address": 0.0.0.0/0 }]
+  defense_support0_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_defense_net1 }
+      security_groups: [ { get_resource: seed_security_group } ]
+      fixed_ips: [{"subnet_id":{get_resource: defense_net1_subnet}, "ip_address": 192.168.99.100}]
+  defense_support1_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_defense_net1 }
+      security_groups: [ { get_resource: seed_security_group } ]
+      fixed_ips: [{"subnet_id":{get_resource: defense_net1_subnet}, "ip_address": 192.168.99.101}]
+  defense_support2_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_defense_net1 }
+      security_groups: [ { get_resource: seed_security_group } ]
+      fixed_ips: [{"subnet_id":{get_resource: defense_net1_subnet}, "ip_address": 192.168.99.102}]
+  defense_support3_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_defense_net1 }
+      security_groups: [ { get_resource: seed_security_group } ]
+      fixed_ips: [{"subnet_id":{get_resource: defense_net1_subnet}, "ip_address": 192.168.99.103}]
+  defense_support4_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_defense_net1 }
+      security_groups: [ { get_resource: seed_security_group } ]
+      fixed_ips: [{"subnet_id":{get_resource: defense_net1_subnet}, "ip_address": 192.168.99.104}]
+  defense_support_vyos_int_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_defense_net1 }
+      security_groups: [ { get_resource: seed_security_group } ]
+      fixed_ips: [{"subnet_id":{get_resource: defense_net1_subnet}, "ip_address": 192.168.99.200}]
+      allowed_address_pairs: [{"ip_address": 0.0.0.0/0 }]
+  defense_support_vyos_ex_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_shared_net }
+      security_groups: [ { get_resource: seed_security_group } ]
+      fixed_ips: [{"subnet_id":{get_resource: shared_net_subnet }, "ip_address": 200.10.10.99}]
+      allowed_address_pairs: [{"ip_address": 0.0.0.0/0 }]
+  defense_support_vyos_join_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: the_join_net }
+      security_groups: [ { get_resource: seed_security_group } ]
+      fixed_ips: [{"subnet_id":{get_resource: join_net_subnet }, "ip_address": 192.168.200.99}]
+      allowed_address_pairs: [{"ip_address": 0.0.0.0/0 }]
+#  attack_vyos_int_port:
+#    type: OS::Neutron::Port
+#    properties:
+#      network: { get_resource: the_attack_net }
+#      security_groups: [ { get_resource: seed_security_group } ]
+#      fixed_ips: [{"subnet_id":{get_resource: attack_net_subnet }, "ip_address": 10.0.0.200}]
+#  attack_vyos_ex_port:
+#    type: OS::Neutron::Port
+#    properties:
+#      network: { get_resource: the_shared_net }
+#      security_groups: [ { get_resource: seed_security_group } ]
+#      fixed_ips: [{"subnet_id":{get_resource: shared_net_subnet }, "ip_address": 200.10.10.10}]
+
+# ----- Nova Compute -----
+# ----- Server Area -----
+  defense_vyos:
+    type: OS::Nova::Server
+    properties:
+      name: "Defense_VyOS"
+      image: { get_param: DF_image_vyos }
+      flavor: "m1.tiny"
+      networks: [{"subnet": { get_resource: defense_net0_subnet}, "network": { get_resource: the_defense_net0}, "port": { get_resource: defense_vyos_int_port}}, {"subnet": { get_resource: shared_net_subnet}, "network": { get_resource: the_shared_net}, "port": { get_resource: defense_vyos_ex_port}},  {"subnet": { get_resource: join_net_subnet}, "network": { get_resource: the_join_net}, "port": { get_resource: defense_vyos_join_port}} ]
+  defense_web1:
+    type: OS::Nova::Server
+    properties:
+      name: "Defense_Web1"
+      image: { get_param: DF_image_web1 }
+      flavor: "m1.small"
+      networks: [ {"subnet": { get_resource: defense_net0_subnet }, "network": { get_resource: the_defense_net0 }, "port": { get_resource: defense_web1_port }} ]
+  defense_db1:
+    type: OS::Nova::Server
+    properties:
+      name: "Defense_DB1"
+      image: { get_param: DF_image_db1 }
+      flavor: "m1.small"
+      networks: [ {"subnet": { get_resource: defense_net0_subnet }, "network": { get_resource: the_defense_net0 }, "port": { get_resource: defense_db1_port }} ]
+  defense_web2:
+    type: OS::Nova::Server
+    properties:
+      name: "Defense_Web2"
+      image: { get_param: DF_image_web2 }
+      flavor: "m1.small"
+      networks: [ {"subnet": { get_resource: defense_net0_subnet }, "network": { get_resource: the_defense_net0 }, "port": { get_resource: defense_web2_port }} ]
+  defense_db2:
+    type: OS::Nova::Server
+    properties:
+      name: "Defense_DB2"
+      image: { get_param: DF_image_db2 }
+      flavor: "m1.small"
+      networks: [ {"subnet": { get_resource: defense_net0_subnet }, "network": { get_resource: the_defense_net0 }, "port": { get_resource: defense_db2_port }} ]
+  defense_dns:
+    type: OS::Nova::Server
+    properties:
+      name: "Defense_DNS"
+      image: { get_param: DF_image_dns }
+      flavor: "m1.small"
+      networks: [ {"subnet": { get_resource: defense_net0_subnet }, "network": { get_resource: the_defense_net0 }, "port": { get_resource: defense_dns_port }} ]
+  defense_mail:
+    type: OS::Nova::Server
+    properties:
+      name: "Defense_Mail"
+      image: { get_param: DF_image_mail }
+      flavor: "m1.small"
+      networks: [ {"subnet": { get_resource: defense_net0_subnet }, "network": { get_resource: the_defense_net0 }, "port": { get_resource: defense_mail_port }} ]
+  defense_zabbix:
+    type: OS::Nova::Server
+    properties:
+      name: "Defense_Zabbix"
+      image: { get_param: DF_image_zabbix }
+      flavor: "m1.small"
+      networks: [ {"subnet": { get_resource: defense_net0_subnet }, "network": { get_resource: the_defense_net0 }, "port": { get_resource: defense_zabbix_port }} ]
+
+# ----- Support Area -----
+  support_ubuntu1:
+    type: OS::Nova::Server
+    properties:
+      name: "Support_Ubuntu1"
+      image: { get_param: SPT_image_Ubuntu1 }
+      flavor: "m1.medium"
+      networks: [ {"subnet": { get_resource: defense_net1_subnet }, "network": { get_resource: the_defense_net1 }, "port": { get_resource: defense_support1_port }} ]
+  support_ubuntu2:
+    type: OS::Nova::Server
+    properties:
+      name: "Support_Ubuntu2"
+      image: { get_param: SPT_image_Ubuntu2 }
+      flavor: "m1.medium"
+      networks: [ {"subnet": { get_resource: defense_net1_subnet }, "network": { get_resource: the_defense_net1 }, "port": { get_resource: defense_support2_port }} ]
+  support_ubuntu3:
+    type: OS::Nova::Server
+    properties:
+      name: "Support_Ubuntu3"
+      image: { get_param: SPT_image_Ubuntu3 }
+      flavor: "m1.medium"
+      networks: [ {"subnet": { get_resource: defense_net1_subnet }, "network": { get_resource: the_defense_net1 }, "port": { get_resource: defense_support3_port }} ]
+  support_ubuntu4:
+    type: OS::Nova::Server
+    properties:
+      name: "Support_Ubuntu4"
+      image: { get_param: SPT_image_Ubuntu4 }
+      flavor: "m1.medium"
+      networks: [ {"subnet": { get_resource: defense_net1_subnet }, "network": { get_resource: the_defense_net1 }, "port": { get_resource: defense_support4_port }} ]
+  support_vyos:
+    type: OS::Nova::Server
+    properties:
+      name: "Support_VyOS"
+      image:  { get_param: SPT_image_vyos }
+      flavor: "m1.small"
+      networks: [{"subnet": { get_resource: defense_net1_subnet}, "network": { get_resource: the_defense_net1}, "port": { get_resource: defense_support_vyos_int_port}}, {"subnet": { get_resource: shared_net_subnet}, "network": { get_resource: the_shared_net}, "port": { get_resource: defense_support_vyos_ex_port}},  {"subnet": { get_resource: join_net_subnet}, "network": { get_resource: the_join_net}, "port": { get_resource: defense_support_vyos_join_port}} ]
